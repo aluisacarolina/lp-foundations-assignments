@@ -1,4 +1,5 @@
 # Foundations Learning Path Assignments
+[![CI Pipeline](https://github.com/aluisacarolina/lp-foundations-assignments/actions/workflows/ci.yml/badge.svg)](https://github.com/aluisacarolina/lp-foundations-assignments/actions/workflows/ci.yml)
 
 ## Introduction
 
