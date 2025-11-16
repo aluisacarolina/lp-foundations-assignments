@@ -60,6 +60,7 @@ def clean_data(country_code: str = "PT") -> pd.DataFrame:
     return long_df
 
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Clean EU life expectancy dataset and filter by country."
