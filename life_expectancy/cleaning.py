@@ -1,3 +1,13 @@
+"""
+Data-cleaning module for the EU life expectancy dataset.
+
+This module follows the Single Responsibility Principle (SRP):
+- `load_data` reads the raw input file.
+- `clean_data` transforms the raw dataframe into tidy format.
+- `save_data` writes the cleaned output to disk.
+- `main` coordinates the full pipeline and command-line usage.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -5,60 +15,48 @@ from pathlib import Path
 import pandas as pd
 
 
-def clean_data(country_code: str = "PT") -> pd.DataFrame:
-    """
-    Clean the raw EU life expectancy dataset and produce a cleaned CSV filtered by country.
+DATA_DIR = Path(__file__).resolve().parent / "data"
+RAW_FILE = DATA_DIR / "eu_life_expectancy_raw.tsv"
+OUT_FILE = DATA_DIR / "pt_life_expectancy.csv"
 
-    Steps performed:
-    - Load the wide-format TSV file.
-    - Unpivot (melt) the year columns into long format.
-    - Split the compound first column into: unit, sex, age, region.
-    - Convert `year` to int and `value` to float, removing invalid entries.
-    - Filter the dataset by the given country code (default: PT).
-    - Save the result as `pt_life_expectancy.csv` (no index).
-    """
-    data_dir = Path(__file__).resolve().parent / "data"
-    in_path = data_dir / "eu_life_expectancy_raw.tsv"
-    out_path = data_dir / "pt_life_expectancy.csv"
 
-    df = pd.read_csv(in_path, sep="\t")
+def load_data() -> pd.DataFrame:
+    """Load the raw TSV dataset."""
+    return pd.read_csv(RAW_FILE, sep="\t")
 
-    # Unpivot year columns to long format
+
+def clean_data(df: pd.DataFrame, country_code: str = "PT") -> pd.DataFrame:
+    """Transform raw data into a tidy dataframe filtered by country."""
     id_col = df.columns[0]
+
     long_df = df.melt(id_vars=[id_col], var_name="year", value_name="value")
 
-    # Split composite column into separate fields
+    # Split composite field: "unit,sex,age,region"
     split_cols = long_df[id_col].str.split(",", expand=True)
     split_cols.columns = ["unit", "sex", "age", "region"]
     split_cols = split_cols.apply(lambda s: s.astype(str).str.strip())
 
     long_df = pd.concat([split_cols, long_df[["year", "value"]]], axis=1)
 
-    # Extract 4-digit year
-    long_df["year"] = (
-        long_df["year"]
-        .astype(str)
-        .str.extract(r"(\d{4})")
-        .astype(int)
-    )
+    # Extract YYYY
+    long_df["year"] = long_df["year"].astype(str).str.extract(r"(\d{4})").astype(int)
 
-    # Extract numeric value (regex handles values like ":" or "12.3 p")
-    numeric = long_df["value"].astype(str).str.extract(
+    # Extract numeric value from strings like ":" or "12.3 p"
+    value_num = long_df["value"].astype(str).str.extract(
         r"([-+]?\d+(?:\.\d+)?)", expand=False
     )
-    long_df["value"] = pd.to_numeric(numeric, errors="coerce")
+    long_df["value"] = pd.to_numeric(value_num, errors="coerce")
 
-    # Remove rows without numeric values
-    long_df = long_df.dropna(subset=["value"]).copy()
+    long_df = long_df.dropna(subset=["value"])
 
-    # Country filter
-    long_df = long_df[long_df["region"] == country_code].copy()
+    filtered = long_df[long_df["region"] == country_code]
 
-    long_df = long_df[["unit", "sex", "age", "region", "year", "value"]]
-    long_df.to_csv(out_path, index=False)
+    return filtered[["unit", "sex", "age", "region", "year", "value"]]
 
-    return long_df
 
+def save_data(df: pd.DataFrame, output_path: Path = OUT_FILE) -> None:
+    """Save cleaned data to CSV."""
+    df.to_csv(output_path, index=False)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -72,6 +70,13 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-if __name__ == "__main__":  # pragma: no cover
+def main() -> None:
     args = _parse_args()
-    clean_data(country_code=args.country)
+    raw = load_data()
+    cleaned = clean_data(raw, country_code=args.country)
+    save_data(cleaned)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()
+
