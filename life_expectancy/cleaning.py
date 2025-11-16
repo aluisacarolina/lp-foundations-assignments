@@ -60,6 +60,7 @@ def save_data(df: pd.DataFrame, output_path: Path = OUT_FILE) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse and return command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Clean EU life expectancy dataset and filter by country."
     )
@@ -71,6 +72,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the full cleaning pipeline: load, clean, save."""
     args = _parse_args()
     raw = load_data()
     cleaned = clean_data(raw, country_code=args.country)
@@ -79,4 +81,3 @@ def main() -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-
